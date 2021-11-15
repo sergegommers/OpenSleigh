@@ -7,6 +7,7 @@ using OpenSleigh.Core.DependencyInjection;
 using OpenSleigh.Persistence.SQL;
 using OpenSleigh.Persistence.SQLServer;
 using OpenSleigh.Samples.Sample11.Common.Messages;
+using OpenSleigh.Samples.Sample11.Sagas;
 using OpenSleigh.Samples.Sample11.Worker.Sagas;
 using OpenSleigh.Transport.RabbitMQ;
 
@@ -19,6 +20,9 @@ namespace OpenSleigh.Samples.Sample11.Worker
             var hostBuilder = CreateHostBuilder(args);
             var host = hostBuilder.Build();
 
+            var serviceCollection = host.Services.GetRequiredService<IServiceCollection>();
+            AddSaga(serviceCollection);
+
             await host.RunAsync();
         }
 
@@ -26,20 +30,24 @@ namespace OpenSleigh.Samples.Sample11.Worker
             Host.CreateDefaultBuilder(args)
             .ConfigureServices((hostContext, services) =>
             {
+                services.AddSingleton(services);
+
                 services.AddLogging(cfg =>
                     {
                         cfg.AddConsole();
                     })
                     .AddOpenSleigh(cfg =>
                     {
+                        services.AddSingleton(cfg);
+
                         var rabbitSection = hostContext.Configuration.GetSection("Rabbit");
-                        var rabbitCfg = new RabbitConfiguration(rabbitSection["HostName"], 
+                        var rabbitCfg = new RabbitConfiguration(rabbitSection["HostName"],
                             rabbitSection["UserName"],
                             rabbitSection["Password"]);
 
                         var sqlConnStr = hostContext.Configuration.GetConnectionString("sql");
                         var sqlConfig = new SqlConfiguration(sqlConnStr);
-                        
+
                         cfg.UseRabbitMQTransport(rabbitCfg, builder =>
                             {
                                 // OPTIONAL
@@ -66,5 +74,20 @@ namespace OpenSleigh.Samples.Sample11.Worker
                             .UseRabbitMQTransport();
                     });
             });
+
+        static void AddSaga(IServiceCollection services)
+        {
+            ServiceProvider q = services.BuildServiceProvider();
+            var cfg = q.GetRequiredService<OpenSleigh.Core.DependencyInjection.IBusConfigurator>();
+
+            void configure(IBusConfigurator cfg)
+            {
+                cfg.AddSaga<PluginSaga, PluginSagaState>()
+                    .UseStateFactory<StartPluginSaga>(msg => new PluginSagaState(msg.CorrelationId))
+                    .UseRabbitMQTransport();
+            }
+
+            services.RebuildOpenSleigh(configure);
+        }
     }
 }

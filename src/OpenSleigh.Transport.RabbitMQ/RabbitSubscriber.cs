@@ -37,6 +37,14 @@ namespace OpenSleigh.Transport.RabbitMQ
             _rabbitCfg = rabbitCfg ?? throw new ArgumentNullException(nameof(rabbitCfg));
         }
 
+        public string QueueName
+        {
+            get
+            {
+                return _queueReferences.QueueName;
+            }
+        }
+
         private void InitChannel()
         {
             StopChannel();

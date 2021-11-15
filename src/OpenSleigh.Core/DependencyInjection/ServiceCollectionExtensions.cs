@@ -31,14 +31,16 @@ namespace OpenSleigh.Core.DependencyInjection
                 .AddSingleton<IMessageHandlersResolver, DefaultMessageHandlersResolver>()
                 .AddSingleton<IMessageHandlersRunner, DefaultMessageHandlersRunner>()
                 .AddSingleton<IMessageContextFactory, DefaultMessageContextFactory>()
-               
+
                 .AddSingleton<IMessageProcessor, MessageProcessor>()
-                .AddHostedService<SubscribersBackgroundService>()
+
+                .AddSingleton<SubscribersBackgroundService>()
+                .AddHostedService(sp => sp.GetRequiredService<SubscribersBackgroundService>())
 
                 .AddTransient<IOutboxProcessor, OutboxProcessor>()
                 .AddSingleton(OutboxProcessorOptions.Default)
                 .AddHostedService<OutboxBackgroundService>()
-                
+
                 .AddTransient<IOutboxCleaner, OutboxCleaner>()
                 .AddSingleton(OutboxCleanerOptions.Default)
                 .AddHostedService<OutboxCleanerBackgroundService>()
@@ -46,16 +48,36 @@ namespace OpenSleigh.Core.DependencyInjection
 
             var builder = new BusConfigurator(services, sagaTypeResolver, typeResolver, systemInfo);
             configure?.Invoke(builder);
-            
+
             return services;
         }
-        
+
         public static IServiceCollection AddBusSubscriber(this IServiceCollection services, Type subscriberType)
         {
             if (!services.Any(s => s.ImplementationType == subscriberType))
                 services.AddSingleton(typeof(ISubscriber), subscriberType);
             return services;
         }
+
+        public static IServiceCollection RebuildOpenSleigh(this IServiceCollection services, Action<OpenSleigh.Core.DependencyInjection.IBusConfigurator> configure = null)
+        {
+            ServiceProvider q = services.BuildServiceProvider();
+
+            var sagaTypeResolver = q.GetRequiredService<ISagaTypeResolver>();
+            var typeResolver = q.GetRequiredService<ITypeResolver>();
+            var systemInfo = q.GetRequiredService<SystemInfo>();
+
+            var builder = q.GetRequiredService<OpenSleigh.Core.DependencyInjection.IBusConfigurator>();
+
+            configure?.Invoke(builder);
+
+            var serv = q.GetService<SubscribersBackgroundService>();
+
+            serv.StartAddedSubscribers(services).Wait();
+
+            return services;
+        }
+
     }
 
 }

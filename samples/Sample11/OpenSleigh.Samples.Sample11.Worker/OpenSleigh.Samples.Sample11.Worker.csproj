@@ -18,6 +18,7 @@
     <ProjectReference Include="..\..\..\src\OpenSleigh.Persistence.SQLServer\OpenSleigh.Persistence.SQLServer.csproj" />
     <ProjectReference Include="..\..\..\src\OpenSleigh.Transport.RabbitMQ\OpenSleigh.Transport.RabbitMQ.csproj" />
     <ProjectReference Include="..\OpenSleigh.Samples.Sample11.Common\OpenSleigh.Samples.Sample11.Common.csproj" />
+    <ProjectReference Include="..\OpenSleigh.Samples.Sample11.Sagas\OpenSleigh.Samples.Sample11.Sagas.csproj" />
   </ItemGroup>
 
   <ItemGroup>

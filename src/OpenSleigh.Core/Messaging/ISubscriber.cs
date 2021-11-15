@@ -5,7 +5,10 @@ namespace OpenSleigh.Core.Messaging
 {
     public interface ISubscriber
     {
+        public string QueueName { get; }
+
         Task StartAsync(CancellationToken cancellationToken = default);
+
         Task StopAsync(CancellationToken cancellationToken = default);
     }
 
