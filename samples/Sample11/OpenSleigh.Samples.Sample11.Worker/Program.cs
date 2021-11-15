@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -21,9 +22,13 @@ namespace OpenSleigh.Samples.Sample11.Worker
             var host = hostBuilder.Build();
 
             var serviceCollection = host.Services.GetRequiredService<IServiceCollection>();
-            AddSaga(serviceCollection);
 
-            await host.RunAsync();
+            var keyboardTask = ProcessKeyBoard(serviceCollection);
+            var hostTask = host.RunAsync();
+
+            DisplayHelp();
+
+            await Task.WhenAny(keyboardTask, hostTask);
         }
 
         static IHostBuilder CreateHostBuilder(string[] args) =>
@@ -75,10 +80,43 @@ namespace OpenSleigh.Samples.Sample11.Worker
                     });
             });
 
+        static void DisplayHelp()
+        {
+            Console.WriteLine();
+            Console.WriteLine("Available commands:");
+            Console.WriteLine("1 - Add Saga");
+            Console.WriteLine("q - quit");
+            Console.WriteLine();
+        }
+
+        static async Task ProcessKeyBoard(IServiceCollection services)
+        {
+            while (true)
+            {
+                if (Console.KeyAvailable)
+                {
+                    var keyInfo = Console.ReadKey();
+
+                    if (keyInfo.KeyChar == '1')
+                    {
+                        AddSaga(services);
+                    }
+                    if (keyInfo.KeyChar == 'q')
+                    {
+                        return;
+                    }
+
+                    DisplayHelp();
+                }
+
+                await Task.Delay(100);
+            }
+        }
+
         static void AddSaga(IServiceCollection services)
         {
             ServiceProvider q = services.BuildServiceProvider();
-            var cfg = q.GetRequiredService<OpenSleigh.Core.DependencyInjection.IBusConfigurator>();
+            var cfg = q.GetRequiredService<IBusConfigurator>();
 
             void configure(IBusConfigurator cfg)
             {
